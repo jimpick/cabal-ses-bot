@@ -4,6 +4,7 @@ import SES from 'ses'
 import debug from 'debug'
 import EventEmitter from 'events'
 import chalk from 'chalk'
+import PQueue from 'p-queue'
 import createNode from '@beaker/dat-node'
 
 class SesBot extends EventEmitter {}
@@ -29,7 +30,8 @@ function buildBotKernelSrc () {
         const pid = ++pidCounter
         handlers[pid] = {
           botName,
-          handlerFunc
+          handlerFunc,
+          queue: new PQueue({concurrency: 1})
         }
         debugLog('Registered handler at PID:', pid, botName, handlerFunc)
         return pid
@@ -38,55 +40,61 @@ function buildBotKernelSrc () {
         const id = 'm' + ++messageCounter
         debugLog(id, `Message:`, message)
         const promises = handlers.map((handler, pid) => {
-          const {botName, handlerFunc, killed} = handler
+          const {botName, handlerFunc, killed, queue} = handler
           const {author} = message
           if (killed) return
           if (author === botName) return
+          const promise = queue.add(() => getPromise())
+          return promise
+
           function handlerLog () {
             debugLog(`${id} PID ${pid}`, ...arguments)
           }
-          try {
-            handlerLog('State:', state[pid])
-            const promise = SES.confine(
-              `${handlerFunc};
-               module.exports(botName, message, state)`,
-              {
-                module: {},
-                console: {
-                  log: (...rest) => {
-                    handlerLog('Log:', ...rest)
-                    log(chalk.blue(`PID ${pid} ${botName}:`), ...rest)
-                  }
-                },
-                botName,
-                message,
-                state: state[pid],
-                setState: newState => state[pid] = newState,
-                chat: {
-                  send: message => {
-                    handlerLog('Emit:', message)
-                    emit(message)
-                  }
-                },
-                sleep: delay => new Promise(resolve => {
-                  setTimeout(resolve, delay)
-                })
+
+          function getPromise () {
+            try {
+              handlerLog('State:', state[pid])
+              const promise = SES.confine(
+                `${handlerFunc};
+                 module.exports(botName, message, state)`,
+                {
+                  module: {},
+                  console: {
+                    log: (...rest) => {
+                      handlerLog('Log:', ...rest)
+                      log(chalk.blue(`PID ${pid} ${botName}:`), ...rest)
+                    }
+                  },
+                  botName,
+                  message,
+                  state: state[pid],
+                  setState: newState => state[pid] = newState,
+                  chat: {
+                    send: message => {
+                      handlerLog('Emit:', message)
+                      emit(message)
+                    }
+                  },
+                  sleep: delay => new Promise(resolve => {
+                    setTimeout(resolve, delay)
+                  })
+                }
+              )
+              return promise.then(result => {
+                handlerLog('Success:', result)
+                return {result}
+              })
+            } catch (e) {
+              const err = {
+                name: e.name,
+                message: e.message,
+                code: e.code,
+                stack: e.stack
               }
-            )
-            return promise.then(result => {
-              handlerLog('Success:', result)
-              return {result}
-            })
-          } catch (e) {
-            const err = {
-              name: e.name,
-              message: e.message,
-              code: e.code,
-              stack: e.stack
+              handlerLog('Fail:', err)
+              log(chalk.red(`PID ${pid} ${botName}:`), e.name + ':', e.message)
+              return Promise.resolve({error: err})
             }
-            handlerLog('Fail:', err)
-            log(chalk.red(`PID ${pid} ${botName}:`), e.name + ':', e.message)
-            return Promise.resolve({error: err})
           }
         })
         return Promise.all(promises)
@@ -110,7 +118,8 @@ const botKernel = r.evaluate(buildBotKernelSrc(), {
   debugLog,
   emit,
   chalk,
-  setTimeout
+  setTimeout,
+  PQueue
 })
 
 function emit (message) {
