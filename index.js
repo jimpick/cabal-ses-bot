@@ -23,7 +23,7 @@ mkdirp.sync(argv.dir)
 console.log('Starting bot server...')
 console.log('Key:', argv.key)
 console.log('Dir:', path.resolve(argv.dir))
-console.log('Nick:', argv.nick)
+console.log('Nick:', argv.nick, '\n')
 
 const cabal = Cabal(
   path.resolve(argv.dir, 'db'),

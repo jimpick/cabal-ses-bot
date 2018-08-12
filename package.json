@@ -13,7 +13,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@beaker/dat-node": "beakerbrowser/dat-node",
     "cabal-node": "^2.2.0",
+    "chalk": "^2.4.1",
     "debug": "^3.1.0",
     "esm": "^3.0.74",
     "minimist": "^1.2.0",
