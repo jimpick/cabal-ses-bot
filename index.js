@@ -41,30 +41,88 @@ function joinChannel (channel) {
   const stream = cabal.createReadStream(channel)
   stream.on('data', () => {})
   stream.on('end', () => {
-    // console.log('End', channel)
-    cabal.watch(channel, () => {
-      cabal.getMessages(channel, 1, (err, messages) => {
-        if (err) {
-          console.log('Error', err)
-          return
-        }
-        const data = messages[0]
-        const message = {
-          channel,
-          author: data[0].value.author,
-          time: data[0].value.time,
-          content: data[0].value.content
-        }
-        onMessage(message)
-      })
+    cabal.metadata(channel, (err, metadata) => {
+      if (err) {
+        console.log('Error', err)
+        return
+      }
+      watchForMessages(channel, metadata.latest)
     })
   })
 }
 
-function onMessage (message) {
+function watchForMessages (channel, fromMessage) {
+  let oldLatest = fromMessage
+  let inProgress = false
+  let pending = false
+  cabal.watch(channel, () => {
+    if (inProgress) {
+      pending = true
+      return
+    }
+    getMessages()
+
+    function getMessages () {
+      inProgress = true
+      cabal.metadata(channel, (err, metadata) => {
+        if (err) {
+          console.log('Error', err)
+          inProgress = false
+          return
+        }
+        const wantMessages = metadata.latest - oldLatest
+        // FIXME: Potentially a bit of a race here. Fetch a few
+        // extra messages and filter them
+        cabal.getMessages(channel, wantMessages + 3, (err, messages) => {
+          if (err) {
+            console.log('Error', err)
+            inProgress = false
+            return
+          }
+          if (!messages || messages.length === 0) return done()
+          const newMessages = []
+          messages.forEach(data => {
+            //if (!data || data.length === 0) return done()
+            if (!data || data.length === 0) return
+            const match = data[0].key.match(/^messages\/.*\/(\d+)$/)
+            if (!match || Number(match[1]) <= oldLatest) return
+            newMessages.push({
+              channel,
+              author: data[0].value.author,
+              time: data[0].value.time,
+              content: data[0].value.content
+            })
+          })
+          oldLatest = metadata.latest
+          pushMessages(done)
+
+          function pushMessages (cb) {
+            const message = newMessages.pop()
+            if (!message) return cb()
+            onMessage(message, err => {
+              if (err) return cb(err)
+              pushMessages(cb)
+            })
+          }
+
+          function done (err) {
+            if (err) console.error('Error', err)
+            inProgress = false
+            if (pending) {
+              pending = false
+              getMessages()
+            }
+          }
+        })
+      })
+    }
+  })
+}
+
+function onMessage (message, cb) {
   const {channel, author, time, content} = message
   // console.log(`${channel} ${time} - ${author}: ${content}`)
-  send(message)
+  send(message, cb)
 }
 
 sesBot.on('message', data => {

@@ -5,6 +5,7 @@ import debug from 'debug'
 import EventEmitter from 'events'
 import chalk from 'chalk'
 import PQueue from 'p-queue'
+import dedent from 'dedent'
 import createNode from '@beaker/dat-node'
 
 class SesBot extends EventEmitter {}
@@ -36,7 +37,7 @@ function buildBotKernelSrc () {
         debugLog('Registered handler at PID:', pid, botName, handlerFunc)
         return pid
       },
-      send: message => {
+      send: (message, cb) => {
         const id = 'm' + ++messageCounter
         debugLog(id, `Message:`, message)
         const promises = handlers.map((handler, pid) => {
@@ -74,21 +75,26 @@ function buildBotKernelSrc () {
                 },
                 sleep: delay => new Promise(resolve => {
                   setTimeout(resolve, delay)
-                })
+                }),
+                dedent
               }
               if (pid === 0) { // Root bot
                 Object.assign(endowments, {
                   isRoot: () => true
                 })
               }
-              const promise = SES.confine(
-                `${handlerFunc}; module.exports(botName, message, state)`,
-                endowments
-              )
-              return promise.then(result => {
-                handlerLog('Success:', result)
-                return {result}
-              })
+              return SES
+                .confine(
+                  `${handlerFunc}; module.exports(botName, message, state)`,
+                  endowments
+                )
+                .then(result => {
+                  handlerLog('Success:', result)
+                  return {result}
+                })
+                .catch(err => {
+                  handlerLog('Fail:', err.name, err.message, err.stack)
+                })
             } catch (e) {
               const err = {
                 name: e.name,
@@ -105,7 +111,11 @@ function buildBotKernelSrc () {
         return Promise.all(promises)
           .then(results => {
             debugLog(id, 'Handlers finished')
-            return results
+            cb(null, results)
+          })
+          .catch(err => {
+            debugLog(id, 'Error', err)
+            cb(err)
           })
       },
       getLastPid: () => pidCounter,
@@ -124,7 +134,8 @@ const botKernel = r.evaluate(buildBotKernelSrc(), {
   emit,
   chalk,
   setTimeout,
-  PQueue
+  PQueue,
+  dedent
 })
 
 function emit (message) {
@@ -137,8 +148,8 @@ export function registerRootBot(nick) {
   botKernel.register(nick, rootBotSource)
 }
 
-export function send (message) {
-  botKernel.send(message)
+export function send (message, cb) {
+  botKernel.send(message, cb)
 }
 
 export default sesBot
