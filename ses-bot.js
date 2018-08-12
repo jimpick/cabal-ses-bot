@@ -1,3 +1,5 @@
+import fs from 'fs'
+import path from 'path'
 import SES from 'ses'
 import debug from 'debug'
 import EventEmitter from 'events'
@@ -44,8 +46,10 @@ function buildBotKernelSrc () {
           try {
             handlerLog('State:', state[pid])
             const result = SES.confine(
-              `(${handlerFunc})(botName, message, state)`,
+              `${handlerFunc};
+               module.exports(botName, message, state)`,
               {
+                module: {},
                 botName,
                 message,
                 state: state[pid],
@@ -92,6 +96,7 @@ function emit (message) {
   sesBot.emit('message', message)
 }
 
+/*
 function bot1 (botName, message, state) {
   if (!state) state = {counter: 0}
   let {counter} = state
@@ -109,7 +114,13 @@ function bot1 (botName, message, state) {
   setState({counter})
   return counter
 }
-botKernel.register('ses-bot', bot1)
+*/
+
+export function registerRootBot(nick) {
+  const rootBotFile = path.resolve(__dirname, 'root-bot.js')
+  const rootBotSource = fs.readFileSync(rootBotFile, 'utf8')
+  botKernel.register(nick, rootBotSource)
+}
 
 export function send (message) {
   botKernel.send(message)

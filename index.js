@@ -6,7 +6,7 @@ import cabalSwarm from 'cabal-node/swarm'
 import ram from 'random-access-memory'
 import minimist from 'minimist'
 import mkdirp from 'mkdirp'
-import sesBot, { send } from './ses-bot'
+import sesBot, { send, registerRootBot } from './ses-bot'
 
 const argv = minimist(process.argv.slice(2))
 
@@ -72,3 +72,6 @@ sesBot.on('message', data => {
   const {channel, message, options} = data 
   cabal.message(channel, message, options)
 })
+
+registerRootBot(argv.nick)
+
