@@ -10,7 +10,7 @@ const debugLog = debug('ses-bot')
 
 const r = SES.makeSESRootRealm()
 
-debugLog('Debug log on')
+debugLog('Debug on')
 
 function buildBotKernelSrc () {
   let def, log

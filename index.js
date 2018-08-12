@@ -1,12 +1,35 @@
-import SES from 'ses'
+#!/usr/bin/env node -r esm
+
+import path from 'path'
 import Cabal from 'cabal-node'
 import cabalSwarm from 'cabal-node/swarm'
 import ram from 'random-access-memory'
+import minimist from 'minimist'
+import mkdirp from 'mkdirp'
 import sesBot, { send } from './ses-bot'
 
-const key = '062cdf507da82626175a0b8db0a6b235b9c2134b96d2376fc8ef59a9597f32a1'
+const argv = minimist(process.argv.slice(2))
 
-const cabal = Cabal(ram, key, {username: 'ses-bot'})
+if (!argv.key || !argv.dir || !argv.nick) {
+  console.error(
+    `Usage: ${path.basename(process.argv[1])} ` +
+    `--key <key> --dir <dir> --nick <nick>`
+  )
+  process.exit(1)
+}
+
+mkdirp.sync(argv.dir)
+
+console.log('Starting bot server...')
+console.log('Key:', argv.key)
+console.log('Dir:', path.resolve(argv.dir))
+console.log('Nick:', argv.nick)
+
+const cabal = Cabal(
+  path.resolve(argv.dir, 'db'),
+  argv.key,
+  {username: argv.nick}
+)
 cabal.db.on('ready', function () {
   cabalSwarm(cabal)
   cabal.getChannels((err, channels) => {
