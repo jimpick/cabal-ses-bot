@@ -27,7 +27,7 @@ function buildBotKernelSrc () {
     let state = []
     const definitions = {
       register: (botName, handlerFunc) => {
-        const pid = ++pidCounter
+        const pid = pidCounter++
         handlers[pid] = {
           botName,
           handlerFunc,
@@ -54,31 +54,36 @@ function buildBotKernelSrc () {
           function getPromise () {
             try {
               handlerLog('State:', state[pid])
+              const endowments = {
+                module: {},
+                console: {
+                  log: (...rest) => {
+                    handlerLog('Log:', ...rest)
+                    log(chalk.blue(`PID ${pid} ${botName}:`), ...rest)
+                  }
+                },
+                botName,
+                message,
+                state: state[pid],
+                setState: newState => state[pid] = newState,
+                chat: {
+                  send: message => {
+                    handlerLog('Emit:', message)
+                    emit(message)
+                  }
+                },
+                sleep: delay => new Promise(resolve => {
+                  setTimeout(resolve, delay)
+                })
+              }
+              if (pid === 0) { // Root bot
+                Object.assign(endowments, {
+                  isRoot: () => true
+                })
+              }
               const promise = SES.confine(
-                `${handlerFunc};
-                 module.exports(botName, message, state)`,
-                {
-                  module: {},
-                  console: {
-                    log: (...rest) => {
-                      handlerLog('Log:', ...rest)
-                      log(chalk.blue(`PID ${pid} ${botName}:`), ...rest)
-                    }
-                  },
-                  botName,
-                  message,
-                  state: state[pid],
-                  setState: newState => state[pid] = newState,
-                  chat: {
-                    send: message => {
-                      handlerLog('Emit:', message)
-                      emit(message)
-                    }
-                  },
-                  sleep: delay => new Promise(resolve => {
-                    setTimeout(resolve, delay)
-                  })
-                }
+                `${handlerFunc}; module.exports(botName, message, state)`,
+                endowments
               )
               return promise.then(result => {
                 handlerLog('Success:', result)
