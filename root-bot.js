@@ -15,21 +15,55 @@ async function handleMessage (botName, message, state) {
     commandMatch[2].trim().split(/\s+/) : null
   switch (command) {
     case 'register':
-      if (!args || args.length != 2 || !args[1].startsWith('dat://')) {
-        await sendMessage(`Usage: register <bot-name> <dat://.. url>`)
-        return
+      {
+        if (!args || args.length != 2 || !args[1].startsWith('dat://')) {
+          await sendMessage(`Usage: register <bot-name> <dat://.. url>`)
+          return
+        }
+        const [botName, url] = args
+        const [err, pid] = await admin.register(botName, url)
+        if (err) {
+          await sendMessage(`Error registering bot: ${err}`)
+          return
+        }
+        await sendMessage(`Bot registered at PID ${pid}`)
       }
-      const [botName, url] = args
-      const [err, pid] = await admin.register(botName, url)
-      if (err) {
-        await sendMessage(`Error registering bot: ${err}`)
-        return
-      }
-      await sendMessage(`Bot registered at PID ${pid}`)
       return
     case 'kill':
-    case 'killall':
+      {
+        if (!args || args.length !== 1 || !(parseInt(args[0], 10) >= 0)) {
+          await sendMessage(`Usage: kill <pid>`)
+          return
+        }
+        const pid = parseInt(args[0], 10)
+        if (pid === 0) {
+          await sendMessage(`Cannot kill PID 0`)
+          return
+        }
+        const err = admin.kill(pid)
+        if (err) {
+          await sendMessage(`Error killing PID ${pid}: ${err}`)
+          return
+        }
+        await sendMessage(`Killed PID ${pid}`)
+      }
+      return
     case 'resurrect':
+      {
+        if (!args || args.length !== 1 || !(parseInt(args[0], 10) >= 0)) {
+          await sendMessage(`Usage: resurrect <pid>`)
+          return
+        }
+        const pid = parseInt(args[0], 10)
+        const err = admin.resurrect(pid)
+        if (err) {
+          await sendMessage(`Error resurrecting PID ${pid}: ${err}`)
+          return
+        }
+        await sendMessage(`Resurrected PID ${pid}`)
+      }
+      return
+    case 'killall':
     case 'update':
       await sendMessage('Not implemented yet.')
       return

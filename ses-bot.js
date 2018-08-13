@@ -121,6 +121,21 @@ function buildBotKernelSrc () {
                       debugLog('Error', e)
                       return [e, null]
                     }
+                  },
+                  kill: pid => {
+                    if (!processes[pid]) {
+                      return new Error('Process does not exist')
+                    }
+                    processes[pid].killed = true
+                  },
+                  resurrect: pid => {
+                    if (!processes[pid]) {
+                      return new Error('Process does not exist')
+                    }
+                    if (!processes[pid].killed) {
+                      return new Error('Process was not terminated')
+                    }
+                    processes[pid].killed = false
                   }
                 }
               })
