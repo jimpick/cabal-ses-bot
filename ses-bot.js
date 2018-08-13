@@ -136,6 +136,17 @@ function buildBotKernelSrc () {
                       return new Error('Process was not terminated')
                     }
                     processes[pid].killed = false
+                  },
+                  killall: () => {
+                    const killedProcesses = []
+                    processes.forEach((process, pid) => {
+                      if (pid === 0) return
+                      if (!process.killed) {
+                        process.killed = true
+                        killedProcesses.push(pid)
+                      }
+                    })
+                    return killedProcesses
                   }
                 }
               })

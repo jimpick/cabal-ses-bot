@@ -64,6 +64,13 @@ async function handleMessage (botName, message, state) {
       }
       return
     case 'killall':
+      const killedProcesses = admin.killall()
+      if (killedProcesses.length === 0) {
+        await sendMessage('No running processes to kill')
+        return
+      }
+      await sendMessage(`Killed PIDs: ${killedProcesses.join(' ')}`)
+      return
     case 'update':
       await sendMessage('Not implemented yet.')
       return
