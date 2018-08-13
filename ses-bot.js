@@ -113,7 +113,6 @@ function buildBotKernelSrc () {
                       const archive = await dat.getArchive(host)
                       const js = await archive.readFile(pathname, 'utf8')
                       await dat.close()
-                      debugLog('Source', js)
                       register(botName, js)
                       processes[pid].url = url
                       return [null, pid]
@@ -126,6 +125,7 @@ function buildBotKernelSrc () {
                     if (!processes[pid]) {
                       return new Error('Process does not exist')
                     }
+                    debugLog('Killed', pid)
                     processes[pid].killed = true
                   },
                   resurrect: pid => {
@@ -135,6 +135,7 @@ function buildBotKernelSrc () {
                     if (!processes[pid].killed) {
                       return new Error('Process was not terminated')
                     }
+                    debugLog('Resurrected', pid)
                     processes[pid].killed = false
                   },
                   killall: () => {
@@ -146,7 +147,32 @@ function buildBotKernelSrc () {
                         killedProcesses.push(pid)
                       }
                     })
+                    debugLog('Killed', killedProcesses)
                     return killedProcesses
+                  },
+                  update: async pid => {
+                    if (!processes[pid]) {
+                      return new Error('Process does not exist')
+                    }
+                    try {
+                      const botDir = path.join(storageDir, 'bots', `${pid}`)
+                      const sourceDatDir = path.join(botDir, 'sourceDat')
+                      rimraf.sync(botDir)
+                      mkdirp.sync(botDir)
+                      debugLog('Dir', botDir)
+                      const dat = createNode({path: sourceDatDir})
+                      const url = processes[pid].url
+                      const {host, pathname} = parseDatUrl(url)
+                      const archive = await dat.getArchive(host)
+                      const js = await archive.readFile(pathname, 'utf8')
+                      await dat.close()
+                      processes[pid].handlerFunc = js
+                      processes[pid].killed = false
+                      debugLog('Updated', pid, js)
+                    } catch (e) {
+                      debugLog('Error', e)
+                      return e
+                    }
                   }
                 }
               })

@@ -71,9 +71,6 @@ async function handleMessage (botName, message, state) {
       }
       await sendMessage(`Killed PIDs: ${killedProcesses.join(' ')}`)
       return
-    case 'update':
-      await sendMessage('Not implemented yet.')
-      return
     case 'ps':
       const processes = await admin.ps()
       const lines = []
@@ -82,6 +79,25 @@ async function handleMessage (botName, message, state) {
         lines.push(`PID: ${pid} ${killed ? '[terminated] ' : ''}${botName}`)
       })
       await sendMessage(lines.join('\n'))
+      return
+    case 'update':
+      {
+        if (!args || args.length !== 1 || !(parseInt(args[0], 10) >= 0)) {
+          await sendMessage(`Usage: update <pid>`)
+          return
+        }
+        const pid = parseInt(args[0], 10)
+        if (pid === 0) {
+          await sendMessage(`Cannot update PID 0`)
+          return
+        }
+        const err = await admin.update(pid)
+        if (err) {
+          await sendMessage(`Error updating PID ${pid}: ${err}`)
+          return
+        }
+        await sendMessage(`Updated PID ${pid}`)
+      }
       return
     case 'help':
       await sendMessage(dedent`
