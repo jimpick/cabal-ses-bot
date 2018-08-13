@@ -131,5 +131,5 @@ sesBot.on('message', data => {
   cabal.message(channel, message, options)
 })
 
-registerRootBot(argv.nick)
+registerRootBot(argv.nick, argv.dir)
 

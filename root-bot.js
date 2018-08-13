@@ -12,14 +12,35 @@ async function handleMessage (botName, message, state) {
   if (!commandMatch) return await unrecognized()
   command = commandMatch[1]
   const args = commandMatch.length > 1 && commandMatch[2] ?
-    commandMatch[2].trim().split() : null
-  console.log('Jim command', command)
+    commandMatch[2].trim().split(/\s+/) : null
   switch (command) {
     case 'register':
-    case 'ps':
+      if (!args || args.length != 2 || !args[1].startsWith('dat://')) {
+        await sendMessage(`Usage: register <bot-name> <dat://.. url>`)
+        return
+      }
+      const [botName, url] = args
+      const [err, pid] = await admin.register(botName, url)
+      if (err) {
+        await sendMessage(`Error registering bot: ${err}`)
+        return
+      }
+      await sendMessage(`Bot registered at PID ${pid}`)
+      return
     case 'kill':
     case 'killall':
+    case 'resurrect':
+    case 'update':
       await sendMessage('Not implemented yet.')
+      return
+    case 'ps':
+      const processes = await admin.ps()
+      const lines = []
+      processes.forEach((proc, pid) => {
+        const {botName, killed} = proc
+        lines.push(`PID: ${pid} ${killed ? '[terminated] ' : ''}${botName}`)
+      })
+      await sendMessage(lines.join('\n'))
       return
     case 'help':
       await sendMessage(dedent`
@@ -27,9 +48,10 @@ async function handleMessage (botName, message, state) {
 
           * help
           * register <nick> <dat url>
-          * ps <pid>
+          * ps
           * kill <pid>
           * killall
+          * resurrect <pid>
           * update <pid>
       `)
       return
