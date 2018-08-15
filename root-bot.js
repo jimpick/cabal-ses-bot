@@ -1,6 +1,6 @@
 module.exports = handleMessage
 
-async function handleMessage (botName, message, state) {
+async function handleMessage (botName, message, state, refs) {
   const {channel, content, author} = message
   const regex = new RegExp(`^${botName}[ :] *(.*)$`)
   const botMatch = content.match(regex)

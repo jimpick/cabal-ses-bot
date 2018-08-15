@@ -28,6 +28,7 @@ function buildBotKernelSrc () {
     let messageCounter = 0
     let processes = []
     let state = []
+    let refs = []
     let storageDir
 
     const definitions = {
@@ -78,7 +79,9 @@ function buildBotKernelSrc () {
               botName,
               message,
               state: state[pid],
+              refs: refs[pid],
               setState: newState => state[pid] = newState,
+              setRefs: newRefs => refs[pid] = newRefs,
               chat: {
                 send: message => {
                   handlerLog('Emit:', message)
@@ -179,12 +182,22 @@ function buildBotKernelSrc () {
             }
             return SES
               .confine(
-                `${handlerFunc}; module.exports(botName, message, state)`,
+                `${handlerFunc}; module.exports(botName, message, state, refs)`,
                 endowments
               )
               .then(result => {
                 handlerLog('Success:', result)
-                return {result}
+                if (pid === 0) return {result}
+                const jsonStateFile = path.join(
+                  storageDir, 'bots', `${pid}`, 'state.json'
+                )
+                return new Promise((resolve, reject) => {
+                  const json = JSON.stringify(state[pid], null, 2)
+                  fs.writeFile(jsonStateFile, json, err => {
+                    if (err) return reject()
+                    resolve({result})
+                  })
+                })
               })
               .catch(err => {
                 handlerLog('Fail:', err.name, err.message, err.stack)
@@ -239,6 +252,7 @@ const botKernel = r.evaluate(buildBotKernelSrc(), {
   setTimeout,
   PQueue,
   dedent,
+  fs,
   path,
   rimraf,
   mkdirp,
