@@ -188,7 +188,14 @@ function buildBotKernelSrc () {
               })
               .catch(err => {
                 handlerLog('Fail:', err.name, err.message, err.stack)
-                log(chalk.red(`PID ${pid} ${botName}:`), e.name + ':', e.message)
+                log(chalk.red(`PID ${pid} ${botName}:`),
+                    err.name + ':', err.message)
+                emit({
+                  channel: message.channel,
+                  message: `Error PID ${pid} ${botName}:` +
+                            `${err.name}: ${err.message}`,
+                  options: {username: botName}
+                })
               })
           } catch (e) {
             const err = {
@@ -199,6 +206,11 @@ function buildBotKernelSrc () {
             }
             handlerLog('Fail:', err)
             log(chalk.red(`PID ${pid} ${botName}:`), e.name + ':', e.message)
+            emit({
+              channel: message.channel,
+              message: `Error PID ${pid} ${botName}: ${e.name}: ${e.message}`,
+              options: {username: botName}
+            })
             return Promise.resolve({error: err})
           }
         }
