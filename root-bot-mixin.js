@@ -4,7 +4,7 @@ import mkdirp from 'mkdirp'
 import parseDatUrl from 'parse-dat-url'
 import {createNode} from '@beaker/dat-node'
 
-export default function makeRootBotMixin ({
+export default function makeRootBotEndowments ({
   processes,
   debugLog,
   storageDir,

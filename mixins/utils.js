@@ -1,7 +1,7 @@
 import dedent from 'dedent'
 import chalk from 'chalk'
 
-export default function makeUtilsMixin() {
+export default function makeUtilsEndowments() {
   return {
     chalk,
     dedent,

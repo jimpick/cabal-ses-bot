@@ -6,9 +6,10 @@ import debug from 'debug'
 import EventEmitter from 'events'
 import chalk from 'chalk'
 import PQueue from 'p-queue'
-import makeRootBotMixin from './root-bot-mixin'
-import makeUtilsMixin from './mixins/utils'
+import makeRootBotEndowments from './root-bot-mixin'
+import makeUtilsEndowments from './mixins/utils'
 
+const readdir = util.promisify(fs.readdir)
 const readFile = util.promisify(fs.readFile)
 const writeFile = util.promisify(fs.writeFile)
 
@@ -33,6 +34,7 @@ function buildBotKernelSrc () {
     const definitions = {
       setStorageDir: dir => storageDir = dir,
       register,
+      loadBotsFromDisk,
       send,
       kill: id => processes[id].killed = true,
     }
@@ -52,6 +54,37 @@ function buildBotKernelSrc () {
         await writeBotJson(pid)
       }
       return pid
+    }
+
+    async function loadBotsFromDisk () {
+      const botsDir = path.join(storageDir, 'bots')
+      const bots = await readdir(botsDir)
+      const botPids = bots.map(i => Number(i)).sort()
+      for (let pid of botPids) {
+        await loadBot(pid)
+      }
+    }
+
+    async function loadBot (pid) {
+      const botDir = path.join(storageDir, 'bots', `${pid}`)
+      const botJsonFile = path.join(botDir, 'bot.json')
+      const botJson = await readFile(botJsonFile, 'utf8')
+      const {botName, killed, metadata} = JSON.parse(botJson)
+      const handlerJsFile = path.join(botDir, 'handler.js')
+      const handlerFunc = await readFile(handlerJsFile, 'utf8')
+      processes[pid] = {
+        botName,
+        killed,
+        metadata,
+        handlerFunc,
+        queue: new PQueue({concurrency: 1}),
+      }
+      const stateFile = path.join(botDir, 'state.json')
+      if (existsSync(stateFile)) {
+        const stateContents = await readFile(stateFile, 'utf8')
+        state[pid] = JSON.parse(stateContents)
+      }
+      debugLog('Loaded handler at PID:', pid, botName, handlerFunc)
     }
 
     async function updateHandlerFunc (pid, handlerFunc) {
@@ -126,9 +159,9 @@ function buildBotKernelSrc () {
                 }
               }
             }
-            Object.assign(endowments, makeUtilsMixin())
+            Object.assign(endowments, makeUtilsEndowments())
             if (pid === 0) { // Root bot extra endowments
-              Object.assign(endowments, makeRootBotMixin({
+              Object.assign(endowments, makeRootBotEndowments({
                 processes,
                 debugLog,
                 storageDir,
@@ -144,7 +177,7 @@ function buildBotKernelSrc () {
               )
               .then(result => {
                 handlerLog('Success:', result)
-                if (pid === 0) return {result}
+                if (pid === 0 || !state[pid]) return {result}
                 const jsonStateFile = path.join(
                   storageDir, 'bots', `${pid}`, 'state.json'
                 )
@@ -203,16 +236,21 @@ const botKernel = r.evaluate(buildBotKernelSrc(), {
   chalk,
   PQueue,
   path,
-  makeRootBotMixin,
-  makeUtilsMixin,
+  makeRootBotEndowments,
+  makeUtilsEndowments,
+  existsSync: fs.existsSync,
+  readdir,
+  readFile,
   writeFile
 })
 
-export async function registerRootBot(nick, dir) {
+export async function startupBots (nick, dir) {
+  // Root boot
   const rootBotFile = path.resolve(__dirname, 'root-bot.js')
   const rootBotSource = await readFile(rootBotFile, 'utf8')
   botKernel.setStorageDir(dir)
   await botKernel.register(nick, rootBotSource)
+  await botKernel.loadBotsFromDisk()
 }
 
 export function send (message, cb) {
