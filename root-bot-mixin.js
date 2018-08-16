@@ -1,8 +1,12 @@
+import fs from 'fs'
 import path from 'path'
+import util from 'util'
 import rimraf from 'rimraf'
 import mkdirp from 'mkdirp'
 import parseDatUrl from 'parse-dat-url'
 import {createNode} from '@beaker/dat-node'
+
+const writeFile = util.promisify(fs.writeFile)
 
 export default function makeRootBotMixin ({
   processes,
@@ -28,8 +32,11 @@ export default function makeRootBotMixin ({
           const archive = await dat.getArchive(host)
           const js = await archive.readFile(pathname, 'utf8')
           await dat.close()
-          register(botName, js)
+          await register(botName, js)
           processes[pid].url = url
+          const botJsonFile = path.join(botDir, 'bot.json')
+          const botJson = JSON.stringify({url}, null, 2)
+          await writeFile(botJsonFile, botJson)
           return [null, pid]
         } catch (e) {
           debugLog('Error', e)

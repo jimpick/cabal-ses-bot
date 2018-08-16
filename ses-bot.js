@@ -1,12 +1,16 @@
 import fs from 'fs'
 import path from 'path'
+import util from 'util'
 import SES from 'ses'
 import debug from 'debug'
 import EventEmitter from 'events'
 import chalk from 'chalk'
 import PQueue from 'p-queue'
-import dedent from 'dedent'
 import makeRootBotMixin from './root-bot-mixin'
+import makeUtilsMixin from './mixins/utils'
+
+const readFile = util.promisify(fs.readFile)
+const writeFile = util.promisify(fs.writeFile)
 
 class SesBot extends EventEmitter {}
 
@@ -15,8 +19,6 @@ const sesBot = new SesBot()
 const debugLog = debug('ses-bot')
 
 const r = SES.makeSESRootRealm()
-
-debugLog('Debug on')
 
 function buildBotKernelSrc () {
   let def, log, debugLog
@@ -36,7 +38,7 @@ function buildBotKernelSrc () {
     }
     return def(definitions) // Freeze 'em
 
-    function register (botName, handlerFunc) {
+    async function register (botName, handlerFunc) {
       const pid = processes.length
       processes[pid] = {
         botName,
@@ -44,6 +46,12 @@ function buildBotKernelSrc () {
         queue: new PQueue({concurrency: 1})
       }
       debugLog('Registered handler at PID:', pid, botName, handlerFunc)
+      if (pid !== 0) {
+        const handlerFile = path.join(
+          storageDir, 'bots', `${pid}`, 'handler.js'
+        )
+        await writeFile(handlerFile, handlerFunc)
+      }
       return pid
     }
 
@@ -88,12 +96,9 @@ function buildBotKernelSrc () {
                   }
                   emit(message)
                 }
-              },
-              sleep: delay => new Promise(resolve => {
-                setTimeout(resolve, delay)
-              }),
-              dedent
+              }
             }
+            Object.assign(endowments, makeUtilsMixin())
             if (pid === 0) { // Root bot extra endowments
               Object.assign(endowments, makeRootBotMixin({
                 processes,
@@ -113,13 +118,8 @@ function buildBotKernelSrc () {
                 const jsonStateFile = path.join(
                   storageDir, 'bots', `${pid}`, 'state.json'
                 )
-                return new Promise((resolve, reject) => {
-                  const json = JSON.stringify(state[pid], null, 2)
-                  fs.writeFile(jsonStateFile, json, err => {
-                    if (err) return reject()
-                    resolve({result})
-                  })
-                })
+                const json = JSON.stringify(state[pid], null, 2)
+                return writeFile(jsonStateFile, json).then(() => {result})
               })
               .catch(err => {
                 handlerLog('Fail:', err.name, err.message, err.stack)
@@ -169,25 +169,20 @@ function buildBotKernelSrc () {
 const botKernel = r.evaluate(buildBotKernelSrc(), {
   log: console.log,
   debugLog,
-  emit,
+  emit: message => sesBot.emit('message', message),
   chalk,
-  setTimeout,
   PQueue,
-  dedent,
-  fs,
   path,
-  makeRootBotMixin
+  makeRootBotMixin,
+  makeUtilsMixin,
+  writeFile
 })
 
-function emit (message) {
-  sesBot.emit('message', message)
-}
-
-export function registerRootBot(nick, dir) {
+export async function registerRootBot(nick, dir) {
   const rootBotFile = path.resolve(__dirname, 'root-bot.js')
-  const rootBotSource = fs.readFileSync(rootBotFile, 'utf8')
+  const rootBotSource = await readFile(rootBotFile, 'utf8')
   botKernel.setStorageDir(dir)
-  botKernel.register(nick, rootBotSource)
+  await botKernel.register(nick, rootBotSource)
 }
 
 export function send (message, cb) {
