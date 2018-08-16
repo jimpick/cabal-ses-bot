@@ -6,10 +6,7 @@ import EventEmitter from 'events'
 import chalk from 'chalk'
 import PQueue from 'p-queue'
 import dedent from 'dedent'
-import mkdirp from 'mkdirp'
-import rimraf from 'rimraf'
-import parseDatUrl from 'parse-dat-url'
-import {createNode} from '@beaker/dat-node'
+import makeRootBotMixin from './root-bot-mixin'
 
 class SesBot extends EventEmitter {}
 
@@ -98,87 +95,12 @@ function buildBotKernelSrc () {
               dedent
             }
             if (pid === 0) { // Root bot extra endowments
-              Object.assign(endowments, {
-                admin: {
-                  ps: () => processes,
-                  register: async (botName, url) => {
-                    // FIXME: Only one at a time
-                    debugLog('Register', botName, url)
-                    const pid = processes.length
-                    try {
-                      const botDir = path.join(storageDir, 'bots', `${pid}`)
-                      rimraf.sync(botDir)
-                      mkdirp.sync(botDir)
-                      debugLog('Dir', botDir)
-                      const sourceDatDir = path.join(botDir, 'sourceDat')
-                      const dat = createNode({path: sourceDatDir})
-                      const {host, pathname} = parseDatUrl(url)
-                      const archive = await dat.getArchive(host)
-                      const js = await archive.readFile(pathname, 'utf8')
-                      await dat.close()
-                      register(botName, js)
-                      processes[pid].url = url
-                      return [null, pid]
-                    } catch (e) {
-                      debugLog('Error', e)
-                      return [e, null]
-                    }
-                  },
-                  kill: pid => {
-                    if (!processes[pid]) {
-                      return new Error('Process does not exist')
-                    }
-                    debugLog('Killed', pid)
-                    processes[pid].killed = true
-                  },
-                  resurrect: pid => {
-                    if (!processes[pid]) {
-                      return new Error('Process does not exist')
-                    }
-                    if (!processes[pid].killed) {
-                      return new Error('Process was not terminated')
-                    }
-                    debugLog('Resurrected', pid)
-                    processes[pid].killed = false
-                  },
-                  killall: () => {
-                    const killedProcesses = []
-                    processes.forEach((process, pid) => {
-                      if (pid === 0) return
-                      if (!process.killed) {
-                        process.killed = true
-                        killedProcesses.push(pid)
-                      }
-                    })
-                    debugLog('Killed', killedProcesses)
-                    return killedProcesses
-                  },
-                  update: async pid => {
-                    if (!processes[pid]) {
-                      return new Error('Process does not exist')
-                    }
-                    try {
-                      const botDir = path.join(storageDir, 'bots', `${pid}`)
-                      const sourceDatDir = path.join(botDir, 'sourceDat')
-                      rimraf.sync(botDir)
-                      mkdirp.sync(botDir)
-                      debugLog('Dir', botDir)
-                      const dat = createNode({path: sourceDatDir})
-                      const url = processes[pid].url
-                      const {host, pathname} = parseDatUrl(url)
-                      const archive = await dat.getArchive(host)
-                      const js = await archive.readFile(pathname, 'utf8')
-                      await dat.close()
-                      processes[pid].handlerFunc = js
-                      processes[pid].killed = false
-                      debugLog('Updated', pid, js)
-                    } catch (e) {
-                      debugLog('Error', e)
-                      return e
-                    }
-                  }
-                }
-              })
+              Object.assign(endowments, makeRootBotMixin({
+                processes,
+                debugLog,
+                storageDir,
+                register
+              }))
             }
             return SES
               .confine(
@@ -254,10 +176,7 @@ const botKernel = r.evaluate(buildBotKernelSrc(), {
   dedent,
   fs,
   path,
-  rimraf,
-  mkdirp,
-  parseDatUrl,
-  createNode
+  makeRootBotMixin
 })
 
 function emit (message) {
