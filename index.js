@@ -30,11 +30,24 @@ const cabal = Cabal(
   argv.key,
   {username: argv.nick}
 )
+
+const joinedChannels = {}
+
 cabal.db.on('ready', function () {
   cabalSwarm(cabal)
-  cabal.getChannels((err, channels) => {
-    channels.forEach(joinChannel)
-  })
+  joinAllChannels()
+  setInterval(joinAllChannels, 60 * 1000) // Poll every minute for new channels
+
+  function joinAllChannels () {
+    cabal.getChannels((err, channels) => {
+      channels.forEach(channel => {
+        if (!joinedChannels[channel]) {
+          joinedChannels[channel] = true
+          joinChannel(channel)
+        }
+      })
+    })
+  }
 })
 
 function joinChannel (channel) {
@@ -55,6 +68,7 @@ function watchForMessages (channel, fromMessage) {
   let oldLatest = fromMessage
   let inProgress = false
   let pending = false
+  console.log('Watching for new messages on channel:', channel)
   cabal.watch(channel, () => {
     if (inProgress) {
       pending = true
