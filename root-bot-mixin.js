@@ -1,18 +1,16 @@
-import fs from 'fs'
 import path from 'path'
-import util from 'util'
 import rimraf from 'rimraf'
 import mkdirp from 'mkdirp'
 import parseDatUrl from 'parse-dat-url'
 import {createNode} from '@beaker/dat-node'
 
-const writeFile = util.promisify(fs.writeFile)
-
 export default function makeRootBotMixin ({
   processes,
   debugLog,
   storageDir,
-  register
+  register,
+  updateHandlerFunc,
+  updateKilled
 }) {
   return {
     admin: {
@@ -32,25 +30,21 @@ export default function makeRootBotMixin ({
           const archive = await dat.getArchive(host)
           const js = await archive.readFile(pathname, 'utf8')
           await dat.close()
-          await register(botName, js)
-          processes[pid].url = url
-          const botJsonFile = path.join(botDir, 'bot.json')
-          const botJson = JSON.stringify({url}, null, 2)
-          await writeFile(botJsonFile, botJson)
+          await register(botName, js, {url})
           return [null, pid]
         } catch (e) {
           debugLog('Error', e)
           return [e, null]
         }
       },
-      kill: pid => {
+      kill: async pid => {
         if (!processes[pid]) {
           return new Error('Process does not exist')
         }
         debugLog('Killed', pid)
-        processes[pid].killed = true
+        await updateKilled(pid, true)
       },
-      resurrect: pid => {
+      resurrect: async pid => {
         if (!processes[pid]) {
           return new Error('Process does not exist')
         }
@@ -58,17 +52,18 @@ export default function makeRootBotMixin ({
           return new Error('Process was not terminated')
         }
         debugLog('Resurrected', pid)
-        processes[pid].killed = false
+        await updateKilled(pid, false)
       },
-      killall: () => {
+      killall: async () => {
         const killedProcesses = []
-        processes.forEach((process, pid) => {
-          if (pid === 0) return
+        for (let pid in processes) {
+          if (pid === '0') continue
+          const process = processes[pid]
           if (!process.killed) {
-            process.killed = true
+            await updateKilled(pid, true)
             killedProcesses.push(pid)
           }
-        })
+        }
         debugLog('Killed', killedProcesses)
         return killedProcesses
       },
@@ -83,13 +78,13 @@ export default function makeRootBotMixin ({
           mkdirp.sync(botDir)
           debugLog('Dir', botDir)
           const dat = createNode({path: sourceDatDir})
-          const url = processes[pid].url
+          const url = processes[pid].metadata.url
           const {host, pathname} = parseDatUrl(url)
           const archive = await dat.getArchive(host)
           const js = await archive.readFile(pathname, 'utf8')
           await dat.close()
-          processes[pid].handlerFunc = js
-          processes[pid].killed = false
+          await updateHandlerFunc(pid, js)
+          await updateKilled(pid, false)
           debugLog('Updated', pid, js)
         } catch (e) {
           debugLog('Error', e)

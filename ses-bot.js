@@ -38,21 +38,49 @@ function buildBotKernelSrc () {
     }
     return def(definitions) // Freeze 'em
 
-    async function register (botName, handlerFunc) {
+    async function register (botName, handlerFunc, metadata) {
       const pid = processes.length
       processes[pid] = {
         botName,
+        metadata,
         handlerFunc,
-        queue: new PQueue({concurrency: 1})
+        queue: new PQueue({concurrency: 1}),
       }
       debugLog('Registered handler at PID:', pid, botName, handlerFunc)
       if (pid !== 0) {
-        const handlerFile = path.join(
-          storageDir, 'bots', `${pid}`, 'handler.js'
-        )
-        await writeFile(handlerFile, handlerFunc)
+        await writeHandlerJs(pid, handlerFunc)
+        await writeBotJson(pid)
       }
       return pid
+    }
+
+    async function updateHandlerFunc (pid, handlerFunc) {
+      processes[pid].handlerFunc = handlerFunc
+      await writeHandlerJs(pid, handlerFunc)
+    }
+
+    async function updateKilled(pid, killed) {
+      if (killed === processes[pid].killed) return
+      processes[pid].killed = killed
+      await writeBotJson(pid)
+    }
+
+    async function writeHandlerJs (pid, handlerFunc) {
+      const botDir = path.join(storageDir, 'bots', `${pid}`)
+      const handlerFile = path.join(botDir, 'handler.js')
+      await writeFile(handlerFile, handlerFunc)
+    }
+
+    async function writeBotJson (pid) {
+      const botDir = path.join(storageDir, 'bots', `${pid}`)
+      const {botName, killed, metadata} = processes[pid]
+      const botJsonFile = path.join(botDir, 'bot.json')
+      const botJson = JSON.stringify({
+        botName,
+        killed,
+        metadata
+      }, null, 2)
+      await writeFile(botJsonFile, botJson)
     }
 
     function send (message, cb) {
@@ -104,7 +132,9 @@ function buildBotKernelSrc () {
                 processes,
                 debugLog,
                 storageDir,
-                register
+                register,
+                updateHandlerFunc,
+                updateKilled
               }))
             }
             return SES

@@ -40,9 +40,10 @@ async function handleMessage (botName, message, state, refs) {
           await sendMessage(`Cannot kill PID 0`)
           return
         }
-        const err = admin.kill(pid)
-        if (err) {
-          await sendMessage(`Error killing PID ${pid}: ${err}`)
+        try {
+          await admin.kill(pid)
+        } catch (e) { 
+          await sendMessage(`Error killing PID ${pid}: ${e}`)
           return
         }
         await sendMessage(`Killed PID ${pid}`)
@@ -55,16 +56,17 @@ async function handleMessage (botName, message, state, refs) {
           return
         }
         const pid = parseInt(args[0], 10)
-        const err = admin.resurrect(pid)
-        if (err) {
-          await sendMessage(`Error resurrecting PID ${pid}: ${err}`)
+        try {
+          admin.resurrect(pid)
+        } catch (e) {
+          await sendMessage(`Error resurrecting PID ${pid}: ${e}`)
           return
         }
         await sendMessage(`Resurrected PID ${pid}`)
       }
       return
     case 'killall':
-      const killedProcesses = admin.killall()
+      const killedProcesses = await admin.killall()
       if (killedProcesses.length === 0) {
         await sendMessage('No running processes to kill')
         return
@@ -91,9 +93,10 @@ async function handleMessage (botName, message, state, refs) {
           await sendMessage(`Cannot update PID 0`)
           return
         }
-        const err = await admin.update(pid)
-        if (err) {
-          await sendMessage(`Error updating PID ${pid}: ${err}`)
+        try {
+          await admin.update(pid)
+        } catch (e) {
+          await sendMessage(`Error updating PID ${pid}: ${e}`)
           return
         }
         await sendMessage(`Updated PID ${pid}`)
@@ -126,7 +129,7 @@ async function handleMessage (botName, message, state, refs) {
       if (line === '') line = ' '
       // FIXME: Can it work without delay?
       chat.send({channel, message: line})
-      await sleep(250)
+      await sleep(100)
     }
   }
 }
