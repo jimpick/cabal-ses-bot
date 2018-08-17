@@ -150,7 +150,7 @@ The 'sample-bots' directory in the source provide source for two simple bots:
 
 ## Bot API
 
-There isn't much of an API yet. Let's look at the source from [echo-bot.js]((https://github.com/jimpick/cabal-ses-bot/blob/master/sample-bots/echo-bot.js). Each bot just exports a default function that will receive every message posted into the cabal chat (from all users, for every channel):
+There isn't much of an API yet. Let's look at the source from [echo-bot.js](https://github.com/jimpick/cabal-ses-bot/blob/master/sample-bots/echo-bot.js). Each bot just exports a default function that will receive every message posted into the cabal chat (from all users, for every channel):
 
 ```js
 module.exports = handleMessage
