@@ -20,6 +20,10 @@ There is more than a decade of research into how to sandbox Javascript. For more
 * Github: [tc39/proposal-frozen-realms](https://github.com/tc39/proposal-frozen-realms)
 * Video: [Frozen Realms: Draft Standard Support for Safer JavaScript Plugins](https://www.youtube.com/watch?v=tuMG7688Ndw) - Mark Miller explains how sandboxing works
 
+This is an experiment in using some pretty cutting edge security sandboxing technology,
+so be careful with it. I may have made mistakes and the core security technology is really
+new.
+
 ## Using it
 
 First, install [cabal](https://cabal-club.github.io/) and start up a new cabal instance, eg:
