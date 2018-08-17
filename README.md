@@ -196,7 +196,7 @@ There is also a `refs` and `setRefs()` object for saving objects that won't be s
 
 Here is a short (2 minute) walkthrough showing how to create bots:
 
-* [Video Walkthrough (MP4)](https://dat-shopping-list-video-jimpick.hashbase.io/dat-shopping-list-1.mp4)
+* [Video Walkthrough (MP4)](https://cabal-ses-bot-video.hashbase.io/cabal-ses-bot.mp4)
 
 ## Ideas for the future
 
