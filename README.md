@@ -1,7 +1,7 @@
 cabal-ses-bot
 =============
 
-A bot hosting daemon for cabal.
+A bot hosting daemon for [cabal](https://cabal-club.github.io/), an experimental p2p community chat platform.
 
 Uses "[Secure Ecmascript](https://github.com/Agoric/SES)" so that participants in the cabal chat can create their own bots ... the code is "untrusted" and runs in a sandbox.
 
