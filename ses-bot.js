@@ -6,6 +6,7 @@ import debug from 'debug'
 import EventEmitter from 'events'
 import chalk from 'chalk'
 import PQueue from 'p-queue'
+import mkdirp from 'mkdirp'
 import makeRootBotEndowments from './root-bot-mixin'
 import makeUtilsEndowments from './mixins/utils'
 
@@ -58,6 +59,7 @@ function buildBotKernelSrc () {
 
     async function loadBotsFromDisk () {
       const botsDir = path.join(storageDir, 'bots')
+      await mkdirp(botsDir)
       const bots = await readdir(botsDir)
       const botPids = bots.map(i => Number(i)).sort()
       for (let pid of botPids) {
@@ -241,7 +243,8 @@ const botKernel = r.evaluate(buildBotKernelSrc(), {
   existsSync: fs.existsSync,
   readdir,
   readFile,
-  writeFile
+  writeFile,
+  mkdirp
 })
 
 export async function startupBots (nick, dir) {
