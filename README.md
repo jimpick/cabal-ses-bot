@@ -5,7 +5,7 @@ A bot hosting daemon for [cabal](https://cabal-club.github.io/), an experimental
 
 Uses "[Secure Ecmascript](https://github.com/Agoric/SES)" so that participants in the cabal chat can create their own bots ... the code is "untrusted" and runs in a sandbox.
 
-![Gif demo](cabal-ses-bot.gif)
+![Gif demo](cabal-ses-bot-1.gif)
 
 ## "Secure Ecmascript" and "Frozen Realms"
 
