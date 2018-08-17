@@ -51,7 +51,8 @@ Assuming you named your master control bot "ses-bot", you can send it the follow
   Displays list of commands.
 
   ```
-  13:08:22 <jim> ses-bot help                                               13:08:22 <ses-bot> Supported commands:
+  13:08:22 <jim> ses-bot help
+  13:08:22 <ses-bot> Supported commands:
   13:08:22 <ses-bot>
   13:08:22 <ses-bot>   * help
   13:08:22 <ses-bot>   * register <nick> <dat url>
@@ -62,14 +63,14 @@ Assuming you named your master control bot "ses-bot", you can send it the follow
   13:08:23 <ses-bot>   * update <pid>
   ```
 
-  * `ses-bot register <nick> <dat url>`
+* `ses-bot register <nick> <dat url>`
 
-    Creates a new bot attached to the 'nick' with the javascript file which is hosted at the dat://... url. You can use [Beaker Browser](https://beakerbrowser.com/) to host and create dat urls and you can even edit the files in the browser. Alternatively, you can use the [dat cli](https://github.com/datproject/dat) to upload/host your bot scripts.
+  Creates a new bot attached to the 'nick' with the javascript file which is hosted at the dat://... url. You can use [Beaker Browser](https://beakerbrowser.com/) to host and create dat urls and you can even edit the files in the browser. Alternatively, you can use the [dat cli](https://github.com/datproject/dat) to upload/host your bot scripts.
 
-    ```
-    13:22:04 <jim> ses-bot register echo-bot dat://9bfa25a2edf2c1d9ca6b800acfbb5d100f4488e50798a78300d1b352427f9897/echo-bot.js
-    13:22:04 <ses-bot> Bot registered at PID 1
-    ```
+  ```
+  13:22:04 <jim> ses-bot register echo-bot dat://9bfa25a2edf2c1d9ca6b800acfbb5d100f4488e50798a78300d1b352427f9897/echo-bot.js
+  13:22:04 <ses-bot> Bot registered at PID 1
+  ```
 
 * `ses-bot ps`
 
