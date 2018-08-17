@@ -192,9 +192,11 @@ For a slightly more advanced example, look at the source from [counter-bot.js](h
 
 There is also a `refs` and `setRefs()` object for saving objects that won't be saved to JSON. These will be lost when the daemon is restarted.
 
-## Video demo
+## Video Walkthrough
 
-<video src="https://cabal-ses-bot-video.hashbase.io/cabal-ses-bot.mp4" controls></video>
+Here is a short (2 minute) walkthrough showing how to create bots:
+
+* [Video Walkthrough (MP4)](https://dat-shopping-list-video-jimpick.hashbase.io/dat-shopping-list-1.mp4)
 
 ## Ideas for the future
 
